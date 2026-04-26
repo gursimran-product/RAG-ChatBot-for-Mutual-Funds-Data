@@ -1,0 +1,26 @@
+# Backend-only dependencies for the FastAPI server (Render deployment).
+# Excludes ingestion-only packages (playwright, sentence-transformers/PyTorch,
+# langchain-text-splitters, tiktoken, streamlit) so the service fits within
+# Render's free-tier 512 MB RAM limit.
+#
+# Embeddings are handled via the HuggingFace Inference API (USE_HF_API=true)
+# instead of loading the model locally, removing the PyTorch footprint entirely.
+#
+# The full requirements.txt is used by GitHub Actions for the ingestion pipeline.
+
+# --- Vector store ---
+chromadb>=0.5.0
+
+# --- LLM (Groq) ---
+groq>=0.9.0
+
+# --- API ---
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# --- HTTP (HuggingFace Inference API for query embedding) ---
+requests>=2.32.3
+
+# --- Config & data ---
+python-dotenv>=1.0.0
+pyyaml>=6.0.1

@@ -4,9 +4,17 @@ services:
     runtime: python
     region: singapore
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-backend.txt
     startCommand: uvicorn app.api:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Embed queries via HuggingFace Inference API instead of loading PyTorch
+      # locally — keeps the process well within Render's free 512 MB RAM limit.
+      - key: USE_HF_API
+        value: "true"
+      # Optional: set to a free HuggingFace token for higher API rate limits.
+      - key: HF_TOKEN
+        sync: false
+      # Required secrets — set in Render dashboard > Environment
       - key: GROQ_API_KEY
         sync: false
       - key: CHROMA_TENANT
