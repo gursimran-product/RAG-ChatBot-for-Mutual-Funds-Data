@@ -33,7 +33,7 @@ MODEL_NAME = "BAAI/bge-small-en-v1.5"
 DIMENSIONS = 384
 QUERY_INSTRUCTION = "Represent this sentence: "
 
-_HF_API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
+_HF_API_URL = f"https://router.huggingface.co/hf-inference/models/{MODEL_NAME}"
 
 # ---------------------------------------------------------------------------
 # Mode selection
