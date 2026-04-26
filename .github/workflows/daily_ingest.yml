@@ -21,7 +21,7 @@ jobs:
       # 1. Checkout
       # -----------------------------------------------------------------------
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -29,7 +29,7 @@ jobs:
       # 2. Python
       # -----------------------------------------------------------------------
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: "3.11"
           cache: "pip"
@@ -38,23 +38,46 @@ jobs:
         run: pip install -r requirements.txt
 
       # -----------------------------------------------------------------------
-      # 3. Cache the bge-small-en-v1.5 model (~133 MB) so it isn't
+      # 3. Validate required secrets are configured
+      #    Fails early with a clear message instead of a cryptic ChromaDB error.
+      # -----------------------------------------------------------------------
+      - name: Validate secrets
+        run: |
+          missing=()
+          [ -z "$CHROMA_TENANT" ]   && missing+=("CHROMA_TENANT")
+          [ -z "$CHROMA_DATABASE" ] && missing+=("CHROMA_DATABASE")
+          [ -z "$CHROMA_API_KEY" ]  && missing+=("CHROMA_API_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: The following repository secrets are not configured:"
+            for s in "${missing[@]}"; do echo "  - $s"; done
+            echo ""
+            echo "Go to: Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+          echo "All required secrets are present."
+        env:
+          CHROMA_TENANT:   ${{ secrets.CHROMA_TENANT }}
+          CHROMA_DATABASE: ${{ secrets.CHROMA_DATABASE }}
+          CHROMA_API_KEY:  ${{ secrets.CHROMA_API_KEY }}
+
+      # -----------------------------------------------------------------------
+      # 4. Cache the bge-small-en-v1.5 model (~133 MB) so it isn't
       #    re-downloaded on every run. Cache key is fixed — model never changes.
       # -----------------------------------------------------------------------
       - name: Cache HuggingFace model (bge-small-en-v1.5)
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: .hf_cache
           key: hf-bge-small-en-v1.5
 
       # -----------------------------------------------------------------------
-      # 4. Playwright (Chromium) — required to render JS-heavy Groww pages
+      # 5. Playwright (Chromium) — required to render JS-heavy Groww pages
       # -----------------------------------------------------------------------
       - name: Install Playwright browsers
         run: playwright install chromium --with-deps
 
       # -----------------------------------------------------------------------
-      # 5. Run the full ingestion pipeline:
+      # 6. Run the full ingestion pipeline:
       #      Phase 1 — Scrape latest Groww HTML pages (Playwright)
       #      Phase 2 — Extract NAV / SIP / AUM / ER / Rating → fund_data.json
       #      Phase 3 — SHA-256 change detection (skip re-embed if unchanged)
@@ -66,12 +89,12 @@ jobs:
         env:
           HF_HOME: ${{ github.workspace }}/.hf_cache
           HF_HUB_DISABLE_SYMLINKS_WARNING: "1"
-          CHROMA_TENANT: ${{ secrets.CHROMA_TENANT }}
+          CHROMA_TENANT:   ${{ secrets.CHROMA_TENANT }}
           CHROMA_DATABASE: ${{ secrets.CHROMA_DATABASE }}
-          CHROMA_API_KEY: ${{ secrets.CHROMA_API_KEY }}
+          CHROMA_API_KEY:  ${{ secrets.CHROMA_API_KEY }}
 
       # -----------------------------------------------------------------------
-      # 6. Commit fund_data.json (NAV changes daily) + hashes.json (change gate)
+      # 7. Commit fund_data.json (NAV changes daily) + hashes.json (change gate)
       #    back to the repo so the next run has the latest baseline to diff against.
       #    Embeddings live in Chroma Cloud — nothing local to commit for them.
       # -----------------------------------------------------------------------
@@ -84,11 +107,11 @@ jobs:
           git push
 
       # -----------------------------------------------------------------------
-      # 7. Upload logs as an artifact — available even if the pipeline failed
+      # 8. Upload logs as an artifact — available even if the pipeline failed
       # -----------------------------------------------------------------------
       - name: Upload ingest logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ingest-log-${{ github.run_id }}
           path: logs/
