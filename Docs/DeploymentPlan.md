@@ -117,7 +117,7 @@ Add these in **Render → Environment → Add Environment Variable**:
 Once deployed, confirm the backend is live:
 
 ```
-GET https://<your-render-url>.onrender.com/health
+GET https://rag-chatbot-for-mutual-funds-data.onrender.com/health
 ```
 
 Expected response:
@@ -153,7 +153,7 @@ allow_origins=["https://<your-app>.streamlit.app"]
 4. Open **Advanced settings → Secrets** and add:
 
 ```toml
-API_BASE = "https://<your-render-url>.onrender.com"
+API_BASE = "https://rag-chatbot-for-mutual-funds-data.onrender.com"
 ```
 
 > `app/ui.py` already reads `API_BASE` from the environment (`os.environ.get("API_BASE", "http://localhost:8000")`), so only this one variable is needed.
