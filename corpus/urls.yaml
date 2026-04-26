@@ -1,0 +1,12 @@
+urls:
+  - url: "https://groww.in/mutual-funds/sbi-gold-fund-direct-growth"
+    scheme_name: "sbi-gold-fund"
+    display_name: "SBI Gold Fund – Direct Growth"
+    amc_name: "SBI Mutual Fund"
+    category: "Gold / Commodity"
+
+  - url: "https://groww.in/mutual-funds/sbi-psu-fund-direct-growth"
+    scheme_name: "sbi-psu-fund"
+    display_name: "SBI PSU Fund – Direct Growth"
+    amc_name: "SBI Mutual Fund"
+    category: "Thematic / PSU Equity"

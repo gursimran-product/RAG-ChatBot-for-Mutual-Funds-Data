@@ -1,0 +1,23 @@
+# Environment & secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# HuggingFace model cache
+.hf_cache/
+
+# Logs
+logs/
+
+# Data (hashes and fund data are committed; chroma dir is not)
+data/chroma/
+
+# OS
+.DS_Store
+Thumbs.db

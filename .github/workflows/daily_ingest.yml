@@ -1,0 +1,95 @@
+name: Daily Corpus Ingest
+
+on:
+  schedule:
+    - cron: "15 3 * * *"  # 09:15 AM IST (UTC+5:30)
+  workflow_dispatch:        # manual trigger from GitHub UI
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false  # queue — don't cancel a still-running job
+
+permissions:
+  contents: write            # needed to commit data/fund_data.json + data/hashes.json back
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # 2. Python
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      # 3. Cache the bge-small-en-v1.5 model (~133 MB) so it isn't
+      #    re-downloaded on every run. Cache key is fixed — model never changes.
+      # -----------------------------------------------------------------------
+      - name: Cache HuggingFace model (bge-small-en-v1.5)
+        uses: actions/cache@v4
+        with:
+          path: .hf_cache
+          key: hf-bge-small-en-v1.5
+
+      # -----------------------------------------------------------------------
+      # 4. Playwright (Chromium) — required to render JS-heavy Groww pages
+      # -----------------------------------------------------------------------
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      # -----------------------------------------------------------------------
+      # 5. Run the full ingestion pipeline:
+      #      Phase 1 — Scrape latest Groww HTML pages (Playwright)
+      #      Phase 2 — Extract NAV / SIP / AUM / ER / Rating → fund_data.json
+      #      Phase 3 — SHA-256 change detection (skip re-embed if unchanged)
+      #      Phase 4 — Two-pass chunking (table_row + prose)
+      #      Phase 5 — bge-small-en-v1.5 embed → upsert into Chroma Cloud
+      # -----------------------------------------------------------------------
+      - name: Run ingestion pipeline
+        run: python scripts/run_ingestion.py
+        env:
+          HF_HOME: ${{ github.workspace }}/.hf_cache
+          HF_HUB_DISABLE_SYMLINKS_WARNING: "1"
+          CHROMA_TENANT: ${{ secrets.CHROMA_TENANT }}
+          CHROMA_DATABASE: ${{ secrets.CHROMA_DATABASE }}
+          CHROMA_API_KEY: ${{ secrets.CHROMA_API_KEY }}
+
+      # -----------------------------------------------------------------------
+      # 6. Commit fund_data.json (NAV changes daily) + hashes.json (change gate)
+      #    back to the repo so the next run has the latest baseline to diff against.
+      #    Embeddings live in Chroma Cloud — nothing local to commit for them.
+      # -----------------------------------------------------------------------
+      - name: Commit updated data files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add --ignore-missing data/fund_data.json data/hashes.json
+          git diff --cached --quiet || git commit -m "chore: daily corpus ingest $(date -u +'%Y-%m-%d')"
+          git push
+
+      # -----------------------------------------------------------------------
+      # 7. Upload logs as an artifact — available even if the pipeline failed
+      # -----------------------------------------------------------------------
+      - name: Upload ingest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-log-${{ github.run_id }}
+          path: logs/
+          retention-days: 7

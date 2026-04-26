@@ -1,0 +1,24 @@
+{
+  "sbi-gold-fund": {
+    "scheme_name": "sbi-gold-fund",
+    "display_name": "SBI Gold Fund – Direct Growth",
+    "source_url": "https://groww.in/mutual-funds/sbi-gold-fund-direct-growth",
+    "nav": "₹45.77",
+    "minimum_sip": "₹500",
+    "fund_size": "₹14,997.68 Cr",
+    "expense_ratio": "0.25%",
+    "rating": "4",
+    "last_updated": "2026-04-26T15:08:39.709999+00:00"
+  },
+  "sbi-psu-fund": {
+    "scheme_name": "sbi-psu-fund",
+    "display_name": "SBI PSU Fund – Direct Growth",
+    "source_url": "https://groww.in/mutual-funds/sbi-psu-fund-direct-growth",
+    "nav": "₹40.34",
+    "minimum_sip": "₹500",
+    "fund_size": "₹5,891.30 Cr",
+    "expense_ratio": "0.85%",
+    "rating": "--",
+    "last_updated": "2026-04-26T15:08:43.627393+00:00"
+  }
+}
