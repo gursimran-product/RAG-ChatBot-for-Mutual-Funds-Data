@@ -6,7 +6,7 @@
 |---|---|---|
 | Daily ingestion scheduler | GitHub Actions | Cron `15 3 * * *` (09:15 IST) |
 | FastAPI backend | Render (Web Service) | Auto-deploy on every push to `main` |
-| Streamlit frontend | Vercel | Auto-deploy on every push to `main` |
+| Streamlit frontend | Streamlit Community Cloud | Auto-deploy on every push to `main` |
 
 ---
 
@@ -31,8 +31,8 @@
                    │                                 │
                    ▼                                 ▼
      ┌─────────────────────┐           ┌─────────────────────┐
-     │  Render             │           │  Vercel             │
-     │  FastAPI backend    │◄──────────│  Streamlit frontend │
+     │  Render             │           │  Streamlit          │
+     │  FastAPI backend    │◄──────────│  Community Cloud    │
      │  app/api.py         │  API_BASE │  app/ui.py          │
      │  uvicorn :8000      │           │  streamlit run      │
      └──────────┬──────────┘           └─────────────────────┘
@@ -127,89 +127,40 @@ Expected response:
 
 ### CORS
 
-`app/api.py` already sets `allow_origins=["*"]`. Once the Vercel frontend URL is stable, tighten this to:
+`app/api.py` already sets `allow_origins=["*"]`. Once the Streamlit Community Cloud URL is stable, tighten this to:
 ```python
-allow_origins=["https://<your-vercel-app>.vercel.app"]
+allow_origins=["https://<your-app>.streamlit.app"]
 ```
 
 ---
 
-## 3. Vercel — Streamlit Frontend
+## 3. Streamlit Community Cloud — Frontend
 
-> **Note on Vercel and Streamlit**: Vercel is a serverless platform optimised for Node.js and static frontends. Streamlit runs as a persistent WebSocket server and is not natively compatible with Vercel's serverless model. The steps below use Vercel's Python runtime to wrap the Streamlit process, but there are connection timeout constraints (responses must complete within 30 s on the free plan).
->
-> **Recommended alternative**: [Streamlit Community Cloud](https://streamlit.io/cloud) is purpose-built for Streamlit apps, free, and deploys directly from GitHub in one click with no configuration. If the Vercel constraint becomes a problem during testing, Streamlit Community Cloud is a drop-in replacement — the same `app/ui.py` file works unchanged.
+> **Why not Vercel?** Streamlit is a persistent WebSocket server — it holds an open connection between the browser and the Python process for the lifetime of the session. Vercel is a serverless platform that kills functions after 10–30 seconds. These models are incompatible; the app would connect and immediately timeout. Streamlit Community Cloud is purpose-built for exactly this kind of app, is free, and requires zero configuration files.
 
-### Option A — Vercel (as specified)
+### Deployment steps
 
-#### Create `vercel.json` in the repo root
-
-```json
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "app/ui.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "app/ui.py"
-    }
-  ]
-}
-```
-
-#### Deployment steps
-
-1. Go to [vercel.com](https://vercel.com) → **New Project → Import Git Repository**
-2. Select the GitHub repo
-3. Set the following:
-
-| Field | Value |
-|---|---|
-| **Framework Preset** | Other |
-| **Root Directory** | *(leave blank — repo root)* |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Output Directory** | *(leave blank)* |
-
-4. Under **Environment Variables**, add:
-
-| Key | Value |
-|---|---|
-| `API_BASE` | `https://<your-render-url>.onrender.com` |
-
-> `app/ui.py` already reads `API_BASE` from the environment (`os.environ.get("API_BASE", "http://localhost:8000")`), so only this one variable is needed on the frontend.
-
-5. Click **Deploy**.
-
-#### Known limitation
-
-Vercel serverless functions time out after 10–30 seconds (plan-dependent). If the Render cold-start causes the first `/session` call to exceed this, the UI will show a connection error. Subsequent requests (Render warmed up) will succeed. Use the [Render paid plan](https://render.com/pricing) to avoid cold starts if this is a concern.
-
----
-
-### Option B — Streamlit Community Cloud (recommended for Streamlit)
-
-1. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**
-2. Connect the GitHub repo
+1. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with GitHub
+2. Click **New app**
 3. Set:
 
 | Field | Value |
 |---|---|
-| **Repository** | `<your-github-username>/<repo-name>` |
+| **Repository** | `gursimran-product/RAG-ChatBot-for-Mutual-Funds-Data` |
 | **Branch** | `main` |
 | **Main file path** | `app/ui.py` |
 
-4. Under **Advanced settings → Secrets**, add:
+4. Open **Advanced settings → Secrets** and add:
 
 ```toml
 API_BASE = "https://<your-render-url>.onrender.com"
 ```
 
-5. Click **Deploy**. The app will be live at `https://<your-app>.streamlit.app`.
+> `app/ui.py` already reads `API_BASE` from the environment (`os.environ.get("API_BASE", "http://localhost:8000")`), so only this one variable is needed.
+
+5. Click **Deploy**. The app will be live at `https://<your-app-name>.streamlit.app` within a minute.
+
+Auto-deploy is on by default — every push to `main` (including the daily ingest commit that updates `fund_data.json`) triggers a redeployment.
 
 ---
 
@@ -218,19 +169,19 @@ API_BASE = "https://<your-render-url>.onrender.com"
 Deploy in this order to avoid broken dependencies:
 
 ```
-Step 1 — Chroma Cloud          Already set up (collection exists)
-Step 2 — GitHub Secrets        Add CHROMA_* secrets to the repo
-Step 3 — Render backend        Deploy, verify /health returns 200
-Step 4 — Frontend (Vercel/SC)  Set API_BASE to the Render URL, deploy
-Step 5 — Test end-to-end       Open frontend → ask a question → get answer
-Step 6 — Verify scheduler      Trigger workflow_dispatch → confirm ingest completes
+Step 1 — Chroma Cloud         Already set up (collection exists)
+Step 2 — GitHub Secrets       Add CHROMA_* secrets to the repo → re-run workflow
+Step 3 — Render backend       Deploy, verify /health returns 200
+Step 4 — Streamlit Cloud      Set API_BASE to the Render URL, deploy
+Step 5 — Test end-to-end      Open frontend → ask a question → get answer
+Step 6 — Verify scheduler     Trigger workflow_dispatch → confirm ingest completes
 ```
 
 ---
 
 ## 5. Environment Variables — Full Reference
 
-| Variable | Scheduler (GHA) | Backend (Render) | Frontend (Vercel/SC) |
+| Variable | Scheduler (GHA) | Backend (Render) | Frontend (Streamlit Cloud) |
 |---|:---:|:---:|:---:|
 | `GROQ_API_KEY` | — | Yes | — |
 | `CHROMA_TENANT` | Yes | Yes | — |
@@ -250,6 +201,6 @@ Step 6 — Verify scheduler      Trigger workflow_dispatch → confirm ingest co
 | Render auto-redeploys | Check Render dashboard → Deploys tab — new deploy triggered by the ingest commit |
 | Backend `/health` responds | `curl https://<render-url>/health` |
 | Backend `/funds` returns data | `curl https://<render-url>/funds` — should show NAV, SIP, AUM for both funds |
-| Frontend loads | Open the Vercel/Streamlit URL — disclaimer banner and example questions visible |
+| Frontend loads | Open `https://<your-app>.streamlit.app` — disclaimer banner and example questions visible |
 | Chat works end-to-end | Ask "What is the expense ratio of SBI Gold Fund?" — expect `0.25%` in the answer |
 | Advisory refusal works | Ask "Should I invest in SBI Gold Fund?" — expect a refusal, not a recommendation |
