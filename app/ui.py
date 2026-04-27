@@ -63,14 +63,18 @@ st.caption(
 # ---------------------------------------------------------------------------
 
 if "thread_id" not in st.session_state:
-    try:
-        resp = requests.post(f"{API_BASE}/session", timeout=5)
-        resp.raise_for_status()
-        st.session_state.thread_id = resp.json()["thread_id"]
-        st.session_state.messages = []
-    except Exception as e:
-        st.error(f"Could not connect to the FAQ API at {API_BASE}. Make sure it is running.\n\n`{e}`")
-        st.stop()
+    with st.spinner("Connecting to the API… (first load may take up to 60 s while the server wakes up)"):
+        try:
+            resp = requests.post(f"{API_BASE}/session", timeout=90)
+            resp.raise_for_status()
+            st.session_state.thread_id = resp.json()["thread_id"]
+            st.session_state.messages = []
+        except Exception as e:
+            st.error(
+                f"Could not connect to the FAQ API at {API_BASE}. "
+                f"The server may still be starting — please refresh the page in 30 seconds.\n\n`{e}`"
+            )
+            st.stop()
 
 # ---------------------------------------------------------------------------
 # Example questions
